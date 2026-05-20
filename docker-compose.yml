@@ -52,6 +52,15 @@ x-agent-defaults: &agent-defaults
   build:
     context: ./docker/hermes-agent
     dockerfile: Dockerfile
+    # Forward corporate proxy to `apt-get` during build. Values come from
+    # proxy.env (or shell env). To make compose substitute them, run:
+    #   docker compose --env-file proxy.env --env-file .env build
+    # If you're outside a corporate network, leave proxy.env blank — the
+    # ARGs default to empty and the build proceeds with direct access.
+    args:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-}
   image: hermes-agent-root:latest
   restart: unless-stopped
   networks:

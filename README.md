@@ -111,6 +111,15 @@ The agent process itself still runs under `HOST_UID:HOST_GID` via the upstream e
 docker compose build hermes-agent-1
 ```
 
+**Behind a corporate proxy:** the Dockerfile accepts `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` build args, populated from `proxy.env`. Run the build (or `up`) with both env files so compose substitutes them:
+
+```bash
+docker compose --env-file proxy.env --env-file .env build
+docker compose --env-file proxy.env --env-file .env up -d
+```
+
+The proxy values are scoped to the `apt-get` step only — they are not baked into the final image. Runtime proxy is injected separately via the `env_file: proxy.env` already wired into each service.
+
 ## LiteLLM Integration
 
 Every hermes-agent instance connects exclusively to your LiteLLM proxy. The proxy is configured once in `.env` via `LITELLM_BASE_URL` and `LITELLM_API_KEY`, then injected into each instance's `config.yaml` at bootstrap time.
