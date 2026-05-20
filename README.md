@@ -97,6 +97,20 @@ HERMES_WEBUI_PASSWORD_1=your-secure-password
 HERMES_WEBUI_PASSWORD_2=another-secure-password
 ```
 
+## Agent Privileges
+
+Each `hermes-agent` container runs from a locally-built image (`docker/hermes-agent/Dockerfile`) that extends the upstream `nousresearch/hermes-agent` with passwordless `sudo` for the in-container `hermes` user. This lets every instance install OS packages, language runtimes, and other system tooling on demand:
+
+```bash
+sudo apt-get update && sudo apt-get install -y <package>
+```
+
+The agent process itself still runs under `HOST_UID:HOST_GID` via the upstream entrypoint's `gosu` drop, so files written to `hermes-home/` and `workspace/` keep correct host ownership. `docker compose up -d` builds the image automatically on first run; rebuild explicitly with:
+
+```bash
+docker compose build hermes-agent-1
+```
+
 ## LiteLLM Integration
 
 Every hermes-agent instance connects exclusively to your LiteLLM proxy. The proxy is configured once in `.env` via `LITELLM_BASE_URL` and `LITELLM_API_KEY`, then injected into each instance's `config.yaml` at bootstrap time.

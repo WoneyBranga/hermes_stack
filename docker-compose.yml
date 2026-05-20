@@ -46,7 +46,13 @@ volumes:
 
 # YAML anchors keep per-instance blocks short and consistent.
 x-agent-defaults: &agent-defaults
-  image: nousresearch/hermes-agent:latest
+  # Built locally to add passwordless sudo for the in-container `hermes`
+  # user — see docker/hermes-agent/Dockerfile. All agent services share
+  # the same tag so the image is built once and reused.
+  build:
+    context: ./docker/hermes-agent
+    dockerfile: Dockerfile
+  image: hermes-agent-root:latest
   restart: unless-stopped
   networks:
     - hermes-net
