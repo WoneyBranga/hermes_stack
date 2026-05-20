@@ -53,6 +53,11 @@ x-agent-defaults: &agent-defaults
   command: ["gateway", "run"]
   env_file:
     - proxy.env
+  deploy:
+    resources:
+      limits:
+        cpus: "2.0"
+        memory: 1G
 
 x-webui-defaults: &webui-defaults
   image: ghcr.io/nesquena/hermes-webui:latest
@@ -61,6 +66,11 @@ x-webui-defaults: &webui-defaults
     - hermes-net
   env_file:
     - proxy.env
+  deploy:
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 512M
 
 services:
 
