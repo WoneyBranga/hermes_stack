@@ -51,12 +51,16 @@ x-agent-defaults: &agent-defaults
   networks:
     - hermes-net
   command: ["gateway", "run"]
+  env_file:
+    - proxy.env
 
 x-webui-defaults: &webui-defaults
   image: ghcr.io/nesquena/hermes-webui:latest
   restart: unless-stopped
   networks:
     - hermes-net
+  env_file:
+    - proxy.env
 
 services:
 

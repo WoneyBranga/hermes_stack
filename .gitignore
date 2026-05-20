@@ -1,5 +1,6 @@
-# Real environment file — never commit
+# Real environment files — never commit
 .env
+proxy.env
 
 # Instance data (sessions, memories, skills, logs, workspace files)
 instances/*/hermes-home/
