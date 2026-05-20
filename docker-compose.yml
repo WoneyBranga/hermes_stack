@@ -1,0 +1,152 @@
+# =============================================================================
+# Hermes Multi-Instance Stack
+# =============================================================================
+# Each instance is a (hermes-agent + hermes-webui) pair that share a
+# bind-mounted HERMES_HOME under `./instances/instance-N/hermes-home/`.
+# All instances talk to a single LiteLLM proxy (LITELLM_BASE_URL in .env).
+#
+# Quick start:
+#   cp .env.example .env && $EDITOR .env
+#   ./scripts/bootstrap.sh        # render per-instance config.yaml files
+#   docker compose up -d
+#   open http://localhost:8787    # instance 1
+#   open http://localhost:8788    # instance 2
+#
+# Scaling: add a new instance with
+#   ./scripts/add-instance.sh 3 <password>
+# The script appends a new managed block between the markers below.
+# Remove with `./scripts/remove-instance.sh 3`.
+#
+# DO NOT hand-edit between the BEGIN/END instance markers; the scripts
+# expect that block layout to stay intact.
+# =============================================================================
+
+networks:
+  hermes-net:
+    driver: bridge
+    name: hermes-net
+
+volumes:
+  # === BEGIN MANAGED VOLUMES ===
+  # >>> volume-2 BEGIN >>>
+  hermes-agent-src-2:
+  # <<< volume-2 END <<<
+  # >>> volume-1 BEGIN >>>
+  hermes-agent-src-1:
+  # <<< volume-1 END <<<
+  # === END MANAGED VOLUMES ===
+  #
+  # NOTE on upgrades — the hermes-agent-src-N named volume is populated
+  # once from the agent image's /opt/hermes on first `up`, and reused
+  # verbatim after `docker pull`. After bumping the agent image, run:
+  #   docker compose down hermes-agent-N hermes-webui-N
+  #   docker volume rm <project>_hermes-agent-src-N
+  #   docker compose up -d hermes-agent-N hermes-webui-N
+  # (the project prefix matches the directory name, lower-cased).
+
+# YAML anchors keep per-instance blocks short and consistent.
+x-agent-defaults: &agent-defaults
+  image: nousresearch/hermes-agent:latest
+  restart: unless-stopped
+  networks:
+    - hermes-net
+  command: ["gateway", "run"]
+
+x-webui-defaults: &webui-defaults
+  image: ghcr.io/nesquena/hermes-webui:latest
+  restart: unless-stopped
+  networks:
+    - hermes-net
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Instance 1
+  # ---------------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------------
+  # Instance 2
+  # ---------------------------------------------------------------------------
+  # >>> instance-2 BEGIN >>>
+  hermes-agent-2:
+    <<: *agent-defaults
+    container_name: hermes-agent-2
+    hostname: hermes-agent-2
+    ports:
+      - "127.0.0.1:8643:8642"
+    volumes:
+      - ./instances/instance-2/hermes-home:/opt/data
+      - hermes-agent-src-2:/opt/hermes
+    environment:
+      - HERMES_HOME=/opt/data
+      - HERMES_UID=${HOST_UID:-501}
+      - HERMES_GID=${HOST_GID:-20}
+      - LITELLM_BASE_URL=${LITELLM_BASE_URL}
+      - LITELLM_API_KEY=${LITELLM_API_KEY}
+      - HERMES_DEFAULT_MODEL=${HERMES_DEFAULT_MODEL}
+      - OPENAI_BASE_URL=${LITELLM_BASE_URL}
+      - OPENAI_API_KEY=${LITELLM_API_KEY}
+
+  hermes-webui-2:
+    <<: *webui-defaults
+    container_name: hermes-webui-2
+    hostname: hermes-webui-2
+    depends_on:
+      - hermes-agent-2
+    ports:
+      - "8788:8787"
+    volumes:
+      - ./instances/instance-2/hermes-home:/home/hermeswebui/.hermes
+      - hermes-agent-src-2:/home/hermeswebui/.hermes/hermes-agent:ro
+      - ./instances/instance-2/workspace:/workspace
+    environment:
+      - HERMES_WEBUI_HOST=0.0.0.0
+      - HERMES_WEBUI_PORT=8787
+      - HERMES_WEBUI_STATE_DIR=/home/hermeswebui/.hermes/webui
+      - HERMES_WEBUI_PASSWORD=${HERMES_WEBUI_PASSWORD_2:?HERMES_WEBUI_PASSWORD_2 is required}
+      - WANTED_UID=${HOST_UID:-501}
+      - WANTED_GID=${HOST_GID:-20}
+  # <<< instance-2 END <<<
+
+  # === BEGIN MANAGED INSTANCES ===
+  # >>> instance-1 BEGIN >>>
+  hermes-agent-1:
+    <<: *agent-defaults
+    container_name: hermes-agent-1
+    hostname: hermes-agent-1
+    ports:
+      - "127.0.0.1:8642:8642"
+    volumes:
+      - ./instances/instance-1/hermes-home:/opt/data
+      - hermes-agent-src-1:/opt/hermes
+    environment:
+      - HERMES_HOME=/opt/data
+      - HERMES_UID=${HOST_UID:-501}
+      - HERMES_GID=${HOST_GID:-20}
+      - LITELLM_BASE_URL=${LITELLM_BASE_URL}
+      - LITELLM_API_KEY=${LITELLM_API_KEY}
+      - HERMES_DEFAULT_MODEL=${HERMES_DEFAULT_MODEL}
+      - OPENAI_BASE_URL=${LITELLM_BASE_URL}
+      - OPENAI_API_KEY=${LITELLM_API_KEY}
+
+  hermes-webui-1:
+    <<: *webui-defaults
+    container_name: hermes-webui-1
+    hostname: hermes-webui-1
+    depends_on:
+      - hermes-agent-1
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./instances/instance-1/hermes-home:/home/hermeswebui/.hermes
+      - hermes-agent-src-1:/home/hermeswebui/.hermes/hermes-agent:ro
+      - ./instances/instance-1/workspace:/workspace
+    environment:
+      - HERMES_WEBUI_HOST=0.0.0.0
+      - HERMES_WEBUI_PORT=8787
+      - HERMES_WEBUI_STATE_DIR=/home/hermeswebui/.hermes/webui
+      - HERMES_WEBUI_PASSWORD=${HERMES_WEBUI_PASSWORD_1:?HERMES_WEBUI_PASSWORD_1 is required}
+      - WANTED_UID=${HOST_UID:-501}
+      - WANTED_GID=${HOST_GID:-20}
+  # <<< instance-1 END <<<
+  # === END MANAGED INSTANCES ===

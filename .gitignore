@@ -1,0 +1,16 @@
+# Real environment file — never commit
+.env
+
+# Instance data (sessions, memories, skills, logs, workspace files)
+instances/*/hermes-home/
+instances/*/workspace/
+
+# But keep the directory skeleton so the bind mounts resolve
+!instances/*/hermes-home/.gitkeep
+!instances/*/workspace/.gitkeep
+
+# Backups produced by scripts/backup-instance.sh
+backups/
+
+# macOS noise
+.DS_Store

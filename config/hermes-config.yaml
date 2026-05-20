@@ -1,0 +1,39 @@
+# =============================================================================
+# Hermes Agent config.yaml — LiteLLM template
+# =============================================================================
+# This file is the canonical template copied into each instance's
+# hermes-home on first start (see scripts/add-instance.sh and the
+# `config-bootstrap` step in docker-compose.yml).
+#
+# Placeholders in `__DOUBLE_UNDERSCORES__` are substituted with values
+# from the project's .env file at instance-creation time. Anything you
+# add here will also propagate to *new* instances, but existing
+# instances keep their already-rendered copy at
+# `instances/instance-N/hermes-home/config.yaml`.
+#
+# Reference: https://github.com/NousResearch/hermes-agent
+# =============================================================================
+
+model:
+  # Model name to send to LiteLLM. Must be defined as an alias in the
+  # LiteLLM proxy's own config.yaml (model_list). Placeholders below are
+  # rendered by scripts/lib/common.sh:render_instance_config using
+  # json.dumps — do NOT wrap them in quotes here, the renderer supplies
+  # its own (and properly escapes embedded quotes / backslashes).
+  default: __HERMES_DEFAULT_MODEL__
+
+  # `custom` = any OpenAI-compatible endpoint. LiteLLM exposes the
+  # OpenAI chat-completions API, so this provider works directly.
+  provider: "custom"
+
+  # API key forwarded as the `Authorization: Bearer …` header. The
+  # value comes from LITELLM_API_KEY in .env; use a placeholder when
+  # the proxy has no auth.
+  api_key: __LITELLM_API_KEY__
+
+  # LiteLLM proxy URL. Containers reach a same-compose litellm service
+  # via http://litellm:4000/v1; an external proxy uses its public URL.
+  base_url: __LITELLM_BASE_URL__
+
+  # Leave context_length / max_tokens unset so hermes uses the model's
+  # native limits as advertised by LiteLLM's /v1/models endpoint.
