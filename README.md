@@ -97,18 +97,23 @@ HERMES_WEBUI_PASSWORD_1=your-secure-password
 HERMES_WEBUI_PASSWORD_2=another-secure-password
 ```
 
-## Agent Privileges
+## Agent & WebUI Privileges
 
-Each `hermes-agent` container runs from a locally-built image (`docker/hermes-agent/Dockerfile`) that extends the upstream `nousresearch/hermes-agent` with passwordless `sudo` for the in-container `hermes` user. This lets every instance install OS packages, language runtimes, and other system tooling on demand:
+Both the `hermes-agent` and `hermes-webui` containers are built locally from Dockerfiles under `docker/`, each extending the upstream image with passwordless `sudo`:
+
+- `docker/hermes-agent/Dockerfile` — adds sudo for the `hermes` user
+- `docker/hermes-webui/Dockerfile` — adds sudo for the `hermeswebui` user
+
+The hermes shell tool actually executes inside the **webui** container (not the agent), so sudo on the webui is what enables the LLM to install packages on demand:
 
 ```bash
 sudo apt-get update && sudo apt-get install -y <package>
 ```
 
-The agent process itself still runs under `HOST_UID:HOST_GID` via the upstream entrypoint's `gosu` drop, so files written to `hermes-home/` and `workspace/` keep correct host ownership. `docker compose up -d` builds the image automatically on first run; rebuild explicitly with:
+Both containers still drop privileges to `HOST_UID:HOST_GID` at runtime, so files written to `hermes-home/` and `workspace/` keep correct host ownership. `docker compose up -d` builds both images automatically on first run; rebuild explicitly with:
 
 ```bash
-docker compose build hermes-agent-1
+docker compose build
 ```
 
 **Behind a corporate proxy:** the Dockerfile accepts `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` build args, populated from `proxy.env`. Run the build (or `up`) with both env files so compose substitutes them:

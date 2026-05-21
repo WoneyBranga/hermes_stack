@@ -75,7 +75,18 @@ x-agent-defaults: &agent-defaults
         memory: 1G
 
 x-webui-defaults: &webui-defaults
-  image: ghcr.io/nesquena/hermes-webui:latest
+  # Built locally to add passwordless sudo for the in-container
+  # `hermeswebui` user — see docker/hermes-webui/Dockerfile. The hermes
+  # shell tool actually executes inside the webui container, so this is
+  # where package-install capability is needed.
+  build:
+    context: ./docker/hermes-webui
+    dockerfile: Dockerfile
+    args:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-}
+  image: hermes-webui-root:latest
   restart: unless-stopped
   networks:
     - hermes-net
