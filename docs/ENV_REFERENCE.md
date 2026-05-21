@@ -48,16 +48,14 @@ echo "HOST_GID=$(id -g)"
 |----------|----------|-------------|
 | `HERMES_WEBUI_PASSWORD_N` | Yes | Password for instance N's web interface. The `docker-compose.yml` uses `${VAR:?}` expansion — the stack will refuse to start if this is empty. |
 
-`add-instance.sh` appends the new password variable automatically. You can also add them manually:
+`add-instance.sh` now generates this password automatically for new instances (8 alphanumeric chars) and appends it to `.env`. You can also add it manually:
 
 ```env
 HERMES_WEBUI_PASSWORD_3=my-secure-password
 ```
 
 Password rules enforced by `add-instance.sh`:
-- Cannot be empty
-- Cannot contain newlines
-- Single quotes in passwords are correctly escaped
+- Generated automatically with 8 alphanumeric characters (`[A-Za-z0-9]`)
 
 ### Per-Instance LiteLLM API keys
 
