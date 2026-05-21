@@ -15,9 +15,9 @@ The stack starts with 2 instances and can scale to 20+ with a single command per
 The script:
 1. Creates `instances/instance-N/{hermes-home,workspace}/`
 2. Renders `config.yaml` with LiteLLM settings from `.env`
-3. Gera uma senha WebUI alfanumérica de 8 caracteres e salva `HERMES_WEBUI_PASSWORD_N` no `.env`
+3. Generates an 8-character alphanumeric WebUI password and saves `HERMES_WEBUI_PASSWORD_N` in `.env`
 4. Appends `LITELLM_API_KEY_N` to `.env`
-5. Exibe a senha gerada no final da execução
+5. Displays the generated password at the end of execution
 6. Inserts the `hermes-agent-N` + `hermes-webui-N` service blocks into `docker-compose.yml`
 
 Then start the new instance:
