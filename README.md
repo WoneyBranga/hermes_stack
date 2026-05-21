@@ -1,135 +1,135 @@
-# Hermes Multi-Instance Stack
+# Stack Hermes Multi-Instância
 
-A platform for running multiple independent [hermes-agent](https://github.com/NousResearch/hermes-agent) instances, each with its own [hermes-webui](https://github.com/nesquena/hermes-webui) frontend. All agents route through a shared [LiteLLM](https://github.com/BerriAI/litellm) proxy, giving you centralised LLM control over every session.
+Uma plataforma para executar várias instâncias independentes do [hermes-agent](https://github.com/NousResearch/hermes-agent), cada uma com seu próprio frontend [hermes-webui](https://github.com/nesquena/hermes-webui). Todos os agentes trafegam por meio de um proxy compartilhado do [LiteLLM](https://github.com/BerriAI/litellm), oferecendo controle centralizado de LLM para todas as sessões.
 
-## Architecture
+## Arquitetura
 
 ```
-Browser → http://localhost:8787  ──► hermes-webui-1 ──┐
-Browser → http://localhost:8788  ──► hermes-webui-2 ──┤  shared hermes-net
-Browser → http://localhost:878N  ──► hermes-webui-N ──┤
-                                                        ▼
-                                  hermes-agent-1/2/N ──► LiteLLM proxy
-                                                           (your endpoint)
+Navegador → http://localhost:8787  ──► hermes-webui-1 ──┐
+Navegador → http://localhost:8788  ──► hermes-webui-2 ──┤  hermes-net compartilhada
+Navegador → http://localhost:878N  ──► hermes-webui-N ──┤
+                                                            ▼
+                                      hermes-agent-1/2/N ──► proxy LiteLLM
+                                                               (seu endpoint)
 
-Each instance shares a bind-mounted hermes-home:
-  instances/instance-N/hermes-home/   ← sessions, skills, memories, config
-  instances/instance-N/workspace/     ← agent workspace files
+Cada instância compartilha um hermes-home montado por bind:
+  instances/instance-N/hermes-home/   ← sessões, skills, memórias, config
+  instances/instance-N/workspace/     ← arquivos do workspace do agente
 ```
 
-Each webui+agent pair shares an isolated `hermes-home` directory on the host, so data never leaks between instances. The `shared-skills/` directory is the one exception — skills placed there are visible (read-only) to all webuis.
+Cada par webui+agent compartilha um diretório `hermes-home` isolado no host, então os dados não vazam entre instâncias. A única exceção é o diretório `shared-skills/`: skills colocadas nele ficam visíveis em modo somente leitura para todos os webuis.
 
-## Prerequisites
+## Pré-requisitos
 
 - Docker + Docker Compose v2
-- Python 3 (for bootstrap templating — no install needed beyond system python)
-- bash 3.2+ (macOS default is fine)
+- Python 3 (para o template do bootstrap — não requer instalação além do Python do sistema)
+- bash 3.2+ (o padrão do macOS é suficiente)
 
-## Quick Start
+## Início rápido
 
 ```bash
-# 1. Configure environment
+# 1. Configure o ambiente
 cp .env.example .env
-$EDITOR .env          # set LITELLM_BASE_URL, passwords, HOST_UID/GID
+$EDITOR .env          # defina LITELLM_BASE_URL, senhas, HOST_UID/GID
 
-# 2. Render per-instance configs
+# 2. Gere as configs por instância
 ./scripts/bootstrap.sh
 
-# 3. Start the stack
+# 3. Suba a stack
 docker compose up -d
 
-# 4. Open in browser
-open http://localhost:8787   # instance 1
-open http://localhost:8788   # instance 2
+# 4. Abra no navegador
+open http://localhost:8787   # instância 1
+open http://localhost:8788   # instância 2
 ```
 
-## Port Mapping
+## Mapeamento de portas
 
-| Instance | WebUI URL                         | Agent Gateway (loopback only) |
-|----------|-----------------------------------|-------------------------------|
-| 1        | http://\<server-ip\>:8787         | localhost:8642                |
-| 2        | http://\<server-ip\>:8788         | localhost:8643                |
-| N        | http://\<server-ip\>:8786+N       | localhost:8641+N              |
+| Instância | URL do WebUI                      | Gateway do agente (somente loopback) |
+|-----------|-----------------------------------|--------------------------------------|
+| 1         | http://\<server-ip\>:8787         | localhost:8642                       |
+| 2         | http://\<server-ip\>:8788         | localhost:8643                       |
+| N         | http://\<server-ip\>:8786+N       | localhost:8641+N                     |
 
-WebUI ports bind to all interfaces (`0.0.0.0`) and are accessible from the network. Agent gateway ports bind to `127.0.0.1` (loopback only) — external access to the agent API is not needed since the webui handles that internally. Password protection is enforced on every webui.
+As portas do WebUI ficam expostas em todas as interfaces (`0.0.0.0`) e podem ser acessadas pela rede. As portas do gateway do agente ficam limitadas a `127.0.0.1` (somente loopback) — o acesso externo à API do agente não é necessário, pois o webui trata disso internamente. A proteção por senha é aplicada em todos os webuis.
 
-## Instance Data
+## Dados das instâncias
 
-Each instance stores its data in a bind-mounted directory you can access directly:
+Cada instância armazena seus dados em um diretório montado por bind que pode ser acessado diretamente:
 
 ```
 instances/
   instance-1/
-    hermes-home/          # agent data (sessions, skills, memories, config.yaml, .env)
-    workspace/            # file workspace visible inside the agent
+    hermes-home/          # dados do agente (sessões, skills, memórias, config.yaml, .env)
+    workspace/            # workspace de arquivos visível dentro do agente
   instance-2/
     ...
 ```
 
-Files are owned by `HOST_UID:HOST_GID` (set in `.env`). You can read, copy or edit any file directly — changes are picked up by the running agent.
+Os arquivos pertencem a `HOST_UID:HOST_GID` (definidos em `.env`). Você pode ler, copiar ou editar qualquer arquivo diretamente — as mudanças são refletidas pelo agente em execução.
 
-## Scripts Reference
+## Referência de scripts
 
-| Script | Usage | Description |
-|--------|-------|-------------|
-| `bootstrap.sh` | `./scripts/bootstrap.sh` | Create `.env` from example and render `config.yaml` for all instances |
-| `add-instance.sh` | `./scripts/add-instance.sh <N> <password>` | Add a new instance (idempotent) |
-| `remove-instance.sh` | `./scripts/remove-instance.sh <N> [--purge] [--yes]` | Remove an instance; `--purge` deletes data |
-| `share-skill.sh` | `./scripts/share-skill.sh <skill> [from] [to\|all]` | Copy a skill between instances |
-| `status.sh` | `./scripts/status.sh` | Show status table for all instances |
-| `backup-instance.sh` | `./scripts/backup-instance.sh <N>` | Create a tarball backup of an instance |
+| Script | Uso | Descrição |
+|--------|-----|-----------|
+| `bootstrap.sh` | `./scripts/bootstrap.sh` | Cria `.env` a partir do exemplo e renderiza `config.yaml` para todas as instâncias |
+| `add-instance.sh` | `./scripts/add-instance.sh <N> <litellm-api-key>` | Adiciona uma nova instância (idempotente e com senha do WebUI gerada automaticamente) |
+| `remove-instance.sh` | `./scripts/remove-instance.sh <N> [--purge] [--yes]` | Remove uma instância; `--purge` apaga os dados |
+| `share-skill.sh` | `./scripts/share-skill.sh <skill> [from] [to\|all]` | Copia uma skill entre instâncias |
+| `status.sh` | `./scripts/status.sh` | Exibe uma tabela de status de todas as instâncias |
+| `backup-instance.sh` | `./scripts/backup-instance.sh <N>` | Cria um backup tarball de uma instância |
 
-See [docs/SCALING.md](docs/SCALING.md) for scaling instructions and [docs/SKILL_SHARING.md](docs/SKILL_SHARING.md) for skill management.
+Consulte [docs/SCALING.md](docs/SCALING.md) para instruções de escala e [docs/SKILL_SHARING.md](docs/SKILL_SHARING.md) para gerenciamento de skills.
 
-## Configuration
+## Configuração
 
-All configuration lives in `.env`. See [docs/ENV_REFERENCE.md](docs/ENV_REFERENCE.md) for the full variable reference.
+Toda a configuração fica em `.env`. Consulte [docs/ENV_REFERENCE.md](docs/ENV_REFERENCE.md) para a referência completa das variáveis.
 
-The most important variables to set before first run:
+As variáveis mais importantes para definir antes da primeira execução são:
 
 ```env
 LITELLM_BASE_URL=http://host.docker.internal:4000/v1
 LITELLM_API_KEY=sk-your-key
 HERMES_DEFAULT_MODEL=gpt-4o-mini
-HOST_UID=501    # run: id -u
-HOST_GID=20     # run: id -g
+HOST_UID=501    # execute: id -u
+HOST_GID=20     # execute: id -g
 HERMES_WEBUI_PASSWORD_1=your-secure-password
 HERMES_WEBUI_PASSWORD_2=another-secure-password
 ```
 
-## Agent & WebUI Privileges
+## Privilégios do Agent e do WebUI
 
-Both the `hermes-agent` and `hermes-webui` containers are built locally from Dockerfiles under `docker/`, each extending the upstream image with passwordless `sudo`:
+Tanto `hermes-agent` quanto `hermes-webui` são construídos localmente a partir dos Dockerfiles em `docker/`, cada um estendendo a imagem upstream com `sudo` sem senha:
 
-- `docker/hermes-agent/Dockerfile` — adds sudo for the `hermes` user
-- `docker/hermes-webui/Dockerfile` — adds sudo for the `hermeswebui` user
+- `docker/hermes-agent/Dockerfile` — adiciona sudo para o usuário `hermes`
+- `docker/hermes-webui/Dockerfile` — adiciona sudo para o usuário `hermeswebui`
 
-The hermes shell tool actually executes inside the **webui** container (not the agent), so sudo on the webui is what enables the LLM to install packages on demand:
+A ferramenta shell do Hermes é executada dentro do contêiner do **webui** (e não do agent), então o `sudo` no webui é o que permite ao LLM instalar pacotes sob demanda:
 
 ```bash
 sudo apt-get update && sudo apt-get install -y <package>
 ```
 
-Both containers still drop privileges to `HOST_UID:HOST_GID` at runtime, so files written to `hermes-home/` and `workspace/` keep correct host ownership. `docker compose up -d` builds both images automatically on first run; rebuild explicitly with:
+Ambos os contêineres ainda reduzem privilégios para `HOST_UID:HOST_GID` em tempo de execução, então os arquivos gravados em `hermes-home/` e `workspace/` mantêm a propriedade correta no host. `docker compose up -d` constrói as duas imagens automaticamente na primeira execução; para reconstruir manualmente:
 
 ```bash
 docker compose build
 ```
 
-**Behind a corporate proxy:** the Dockerfile accepts `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` build args, populated from `proxy.env`. Run the build (or `up`) with both env files so compose substitutes them:
+**Atrás de proxy corporativo:** o Dockerfile aceita argumentos de build `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`, preenchidos a partir de `proxy.env`. Execute o build (ou `up`) com ambos os arquivos de ambiente para que o compose faça a substituição:
 
 ```bash
 docker compose --env-file proxy.env --env-file .env build
 docker compose --env-file proxy.env --env-file .env up -d
 ```
 
-The proxy values are scoped to the `apt-get` step only — they are not baked into the final image. Runtime proxy is injected separately via the `env_file: proxy.env` already wired into each service.
+Os valores do proxy ficam limitados apenas à etapa de `apt-get` — eles não são incorporados à imagem final. O proxy em runtime é injetado separadamente via `env_file: proxy.env`, já configurado em cada serviço.
 
-## LiteLLM Integration
+## Integração com LiteLLM
 
-Every hermes-agent instance connects exclusively to your LiteLLM proxy. The proxy is configured once in `.env` via `LITELLM_BASE_URL` and `LITELLM_API_KEY`, then injected into each instance's `config.yaml` at bootstrap time.
+Cada instância do hermes-agent se conecta exclusivamente ao seu proxy LiteLLM. O proxy é configurado uma vez no `.env` por meio de `LITELLM_BASE_URL` e `LITELLM_API_KEY`, e depois injetado no `config.yaml` de cada instância durante o bootstrap.
 
-LiteLLM must be reachable from inside the Docker network:
-- **Same host (macOS/Linux):** `http://host.docker.internal:4000/v1`
-- **Sibling Docker service:** `http://litellm:4000/v1` (attach litellm to `hermes-net`)
-- **External/cloud:** `https://litellm.example.com/v1`
+O LiteLLM precisa estar acessível de dentro da rede Docker:
+- **Mesmo host (macOS/Linux):** `http://host.docker.internal:4000/v1`
+- **Serviço Docker irmão:** `http://litellm:4000/v1` (conecte o litellm à `hermes-net`)
+- **Externo/cloud:** `https://litellm.example.com/v1`

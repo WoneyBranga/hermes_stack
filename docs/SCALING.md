@@ -5,18 +5,20 @@ The stack starts with 2 instances and can scale to 20+ with a single command per
 ## Adding an Instance
 
 ```bash
-./scripts/add-instance.sh <N> <webui-password>
+./scripts/add-instance.sh <N> <litellm-api-key>
 
 # Examples
-./scripts/add-instance.sh 3 'my-secure-pass'
-./scripts/add-instance.sh 10 'another-pass'
+./scripts/add-instance.sh 3 'sk-instance-3'
+./scripts/add-instance.sh 10 'sk-instance-10'
 ```
 
 The script:
 1. Creates `instances/instance-N/{hermes-home,workspace}/`
 2. Renders `config.yaml` with LiteLLM settings from `.env`
-3. Appends `HERMES_WEBUI_PASSWORD_N` to `.env`
-4. Inserts the `hermes-agent-N` + `hermes-webui-N` service blocks into `docker-compose.yml`
+3. Generates an 8-character alphanumeric WebUI password and saves `HERMES_WEBUI_PASSWORD_N` in `.env`
+4. Appends `LITELLM_API_KEY_N` to `.env`
+5. Displays the generated password at the end of execution
+6. Inserts the `hermes-agent-N` + `hermes-webui-N` service blocks into `docker-compose.yml`
 
 Then start the new instance:
 
@@ -40,7 +42,7 @@ The script is idempotent: re-running for an existing instance exits with an erro
 
 ```bash
 for N in 3 4 5; do
-  ./scripts/add-instance.sh $N "password-for-instance-$N"
+  ./scripts/add-instance.sh $N "sk-instance-$N"
 done
 docker compose up -d hermes-agent-3 hermes-webui-3 \
                      hermes-agent-4 hermes-webui-4 \

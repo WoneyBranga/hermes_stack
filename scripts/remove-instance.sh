@@ -11,7 +11,7 @@
 #   - Stops + removes the agent and webui containers (if running)
 #   - Removes the named volume hermes-agent-src-N
 #   - Removes the managed YAML blocks from docker-compose.yml
-#   - Removes HERMES_WEBUI_PASSWORD_N from .env
+#   - Removes HERMES_WEBUI_PASSWORD_N and LITELLM_API_KEY_N from .env
 
 source "$(dirname "$0")/lib/common.sh"
 
@@ -84,10 +84,11 @@ if [[ -f "$ENV_FILE" ]]; then
   tmp="$(mktemp)"
   awk -v n="$N" '
     $0 ~ "^HERMES_WEBUI_PASSWORD_" n "=" { next }
+    $0 ~ "^LITELLM_API_KEY_" n "=" { next }
     { print }
   ' "$ENV_FILE" > "$tmp"
   mv "$tmp" "$ENV_FILE"
-  log "removed HERMES_WEBUI_PASSWORD_${N} from .env"
+  log "removed HERMES_WEBUI_PASSWORD_${N} and LITELLM_API_KEY_${N} from .env"
 fi
 
 # --- data directory --------------------------------------------------------

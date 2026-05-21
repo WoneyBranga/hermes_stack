@@ -2,12 +2,13 @@
 # Append a new (hermes-agent + hermes-webui) instance to the stack.
 #
 # Usage:
-#   ./scripts/add-instance.sh <N> <webui-password>
+#   ./scripts/add-instance.sh <N> <litellm-api-key>
 #
 # What it does:
 #   1. Creates instances/instance-N/{hermes-home,workspace}/
 #   2. Renders config.yaml from config/hermes-config.yaml template
-#   3. Appends HERMES_WEBUI_PASSWORD_N=... to .env (if missing)
+#   3. Generates a random WebUI password and appends
+#      HERMES_WEBUI_PASSWORD_N=... and LITELLM_API_KEY_N=... to .env (if missing)
 #   4. Inserts the agent+webui service block and the named volume into
 #      docker-compose.yml between the managed-section markers.
 #
@@ -19,28 +20,27 @@ require_cmd python3
 
 if (( $# != 2 )); then
   cat <<USAGE >&2
-usage: $0 <instance-number> <webui-password>
+usage: $0 <instance-number> <litellm-api-key>
 
   instance-number   positive integer (1..999)
-  webui-password    password used to log into the WebUI for this instance
+  litellm-api-key   API key used by this instance to authenticate on LiteLLM
 
 example:
-  $0 3 's3cret-pa55'
+  $0 3 'sk-instance-3'
 USAGE
   exit 2
 fi
 
 N="$1"
-PASSWORD="$2"
+API_KEY="$2"
 
 validate_instance_number "$N"
 
-# Reject characters that would corrupt the single-quoted env entry.
-if [[ "$PASSWORD" == *$'\n'* ]]; then
-  die "password must not contain newlines"
+if [[ "$API_KEY" == *$'\n'* ]]; then
+  die "api key must not contain newlines"
 fi
-if [[ -z "$PASSWORD" ]]; then
-  die "password must not be empty"
+if [[ -z "$API_KEY" ]]; then
+  die "api key must not be empty"
 fi
 
 if instance_block_exists "$N"; then
@@ -55,20 +55,38 @@ mkdir -p "$(instance_home_dir "$N")" "$(instance_work_dir "$N")"
 log "created instances/instance-${N}/{hermes-home,workspace}/"
 
 # --- 2. .env entry ----------------------------------------------------------
-# Escape ' in password for single-quoted shell literal.
-escaped_pw="${PASSWORD//\'/\'\\\'\'}"
-env_line="HERMES_WEBUI_PASSWORD_${N}='${escaped_pw}'"
+append_env_secret_if_missing() {
+  local key="$1" raw_value="$2"
+  local escaped_value line
+  escaped_value="${raw_value//\'/\'\\\'\'}"
+  line="${key}='${escaped_value}'"
 
-if grep -q "^HERMES_WEBUI_PASSWORD_${N}=" "$ENV_FILE"; then
-  warn "HERMES_WEBUI_PASSWORD_${N} already present in .env — leaving existing value untouched"
-else
+  if grep -q "^${key}=" "$ENV_FILE"; then
+    warn "${key} already present in .env — leaving existing value untouched"
+    return 0
+  fi
+
   # Ensure a trailing newline before appending.
   [[ -s "$ENV_FILE" && -z "$(tail -c1 "$ENV_FILE")" ]] || printf '\n' >> "$ENV_FILE"
-  printf '%s\n' "$env_line" >> "$ENV_FILE"
+  printf '%s\n' "$line" >> "$ENV_FILE"
   # Re-assert owner-only permissions in case .env was created by hand.
   chmod 600 "$ENV_FILE"
-  log "added HERMES_WEBUI_PASSWORD_${N} to .env"
-fi
+  log "added ${key} to .env"
+}
+
+generate_webui_password() {
+  python3 - <<'PY'
+import secrets
+import string
+
+alphabet = string.ascii_letters + string.digits
+print("".join(secrets.choice(alphabet) for _ in range(8)))
+PY
+}
+
+PASSWORD="$(generate_webui_password)"
+append_env_secret_if_missing "HERMES_WEBUI_PASSWORD_${N}" "$PASSWORD"
+append_env_secret_if_missing "LITELLM_API_KEY_${N}" "$API_KEY"
 
 # --- 3. config.yaml ---------------------------------------------------------
 render_instance_config "$N"
@@ -94,5 +112,8 @@ Instance ${N} added.
 
 Next:
   docker compose up -d hermes-agent-${N} hermes-webui-${N}
+
+WebUI password (instance ${N}):
+  ${PASSWORD}
 
 DONE
