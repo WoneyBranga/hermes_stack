@@ -73,7 +73,7 @@ Os arquivos pertencem a `HOST_UID:HOST_GID` (definidos em `.env`). Você pode le
 | Script | Uso | Descrição |
 |--------|-----|-----------|
 | `bootstrap.sh` | `./scripts/bootstrap.sh` | Cria `.env` a partir do exemplo e renderiza `config.yaml` para todas as instâncias |
-| `add-instance.sh` | `./scripts/add-instance.sh <N> <api-key>` | Adiciona uma nova instância (idempotente e com senha do WebUI gerada automaticamente) |
+| `add-instance.sh` | `./scripts/add-instance.sh <N> <litellm-api-key>` | Adiciona uma nova instância (idempotente e com senha do WebUI gerada automaticamente) |
 | `remove-instance.sh` | `./scripts/remove-instance.sh <N> [--purge] [--yes]` | Remove uma instância; `--purge` apaga os dados |
 | `share-skill.sh` | `./scripts/share-skill.sh <skill> [from] [to\|all]` | Copia uma skill entre instâncias |
 | `status.sh` | `./scripts/status.sh` | Exibe uma tabela de status de todas as instâncias |
