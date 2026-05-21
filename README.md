@@ -73,7 +73,7 @@ Files are owned by `HOST_UID:HOST_GID` (set in `.env`). You can read, copy or ed
 | Script | Usage | Description |
 |--------|-------|-------------|
 | `bootstrap.sh` | `./scripts/bootstrap.sh` | Create `.env` from example and render `config.yaml` for all instances |
-| `add-instance.sh` | `./scripts/add-instance.sh <N> <password>` | Add a new instance (idempotent) |
+| `add-instance.sh` | `./scripts/add-instance.sh <N> <password> <api-key>` | Add a new instance (idempotent) |
 | `remove-instance.sh` | `./scripts/remove-instance.sh <N> [--purge] [--yes]` | Remove an instance; `--purge` deletes data |
 | `share-skill.sh` | `./scripts/share-skill.sh <skill> [from] [to\|all]` | Copy a skill between instances |
 | `status.sh` | `./scripts/status.sh` | Show status table for all instances |

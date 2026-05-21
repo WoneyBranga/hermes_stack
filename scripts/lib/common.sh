@@ -80,10 +80,10 @@ render_instance_block() {
       - HERMES_UID=\${HOST_UID:-501}
       - HERMES_GID=\${HOST_GID:-20}
       - LITELLM_BASE_URL=\${LITELLM_BASE_URL}
-      - LITELLM_API_KEY=\${LITELLM_API_KEY}
+      - LITELLM_API_KEY=\${LITELLM_API_KEY_${n}:?LITELLM_API_KEY_${n} is required}
       - HERMES_DEFAULT_MODEL=\${HERMES_DEFAULT_MODEL}
       - OPENAI_BASE_URL=\${LITELLM_BASE_URL}
-      - OPENAI_API_KEY=\${LITELLM_API_KEY}
+      - OPENAI_API_KEY=\${LITELLM_API_KEY_${n}:?LITELLM_API_KEY_${n} is required}
 
   hermes-webui-${n}:
     <<: *webui-defaults
@@ -192,10 +192,12 @@ render_instance_config() {
   #     never break the resulting YAML (the template now uses bare
   #     placeholders — json.dumps supplies its own quoting).
   HERMES_ENV_FILE="$ENV_FILE" \
+  HERMES_INSTANCE_N="$n" \
   python3 - "$CONFIG_TEMPLATE" "$target" <<'PY'
 import json, os, re, sys
 
 env_path = os.environ["HERMES_ENV_FILE"]
+instance_n = os.environ["HERMES_INSTANCE_N"]
 src, dst = sys.argv[1], sys.argv[2]
 
 def strip_quotes(v):
@@ -204,22 +206,23 @@ def strip_quotes(v):
         return v[1:-1]
     return v
 
-wanted = ("HERMES_DEFAULT_MODEL", "LITELLM_API_KEY", "LITELLM_BASE_URL")
 values = {}
 with open(env_path) as f:
     for line in f:
         m = re.match(r"^([A-Z_][A-Z0-9_]*)=(.*)$", line)
-        if m and m.group(1) in wanted:
+        if m:
             values[m.group(1)] = strip_quotes(m.group(2))
 
 missing = [k for k in ("HERMES_DEFAULT_MODEL", "LITELLM_BASE_URL") if not values.get(k)]
 if missing:
     sys.exit("missing required key(s) in .env: " + ", ".join(missing))
 
+api_key = values.get(f"LITELLM_API_KEY_{instance_n}", values.get("LITELLM_API_KEY", ""))
+
 with open(src) as f:
     body = f.read()
 body = body.replace("__HERMES_DEFAULT_MODEL__", json.dumps(values["HERMES_DEFAULT_MODEL"]))
-body = body.replace("__LITELLM_API_KEY__",      json.dumps(values.get("LITELLM_API_KEY", "")))
+body = body.replace("__LITELLM_API_KEY__",      json.dumps(api_key))
 body = body.replace("__LITELLM_BASE_URL__",     json.dumps(values["LITELLM_BASE_URL"]))
 with open(dst, "w") as f:
     f.write(body)
